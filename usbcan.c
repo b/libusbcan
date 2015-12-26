@@ -101,7 +101,7 @@ usbcan_start(uint32_t dev, uint32_t bus)
 uint32_t
 usbcan_reset(uint32_t dev, uint32_t bus)
 {
-    VCI_ResetCAN(type, dev, bus);
+    VCI_ResetCAN(state.type, dev, bus);
 
     return USBCAN_OK;
 }
