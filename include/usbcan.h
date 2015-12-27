@@ -7,6 +7,7 @@
 
 #define MAX_FILTERS 14
 
+#define ID_MASK  0x1FFFFFFF
 #define RTR_FLAG 0x80000000
 #define EXT_FLAG 0x40000000
 #define TS_FLAG  0x20000000
@@ -39,10 +40,15 @@ struct usbcan_bus_config
 };
 
 uint32_t usbcan_library_init();
+uint32_t usbcan_library_close();
+
 uint32_t usbcan_init(uint32_t dev, uint32_t bus, struct usbcan_bus_config *config);
 uint32_t usbcan_start(uint32_t dev, uint32_t bus);
 uint32_t usbcan_reset(uint32_t dev, uint32_t bus);
 uint32_t usbcan_stop(uint32_t dev, uint32_t bus);
+
+uint32_t usbcan_send(uint32_t dev, uint32_t bus, struct can_msg *msg);
+uint32_t usbcan_send(uint32_t dev, uint32_t bus, struct can_msg *msgs, uint32_t len);
 
 uint32_t usbcan_set_filters(uint32_t dev, uint32_t bus, struct usbcan_filter *filters, uint8_t num_filters);
 uint32_t usbcan_clear_filters(uint32_t dev, uint32_t bus);
