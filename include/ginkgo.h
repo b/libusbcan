@@ -222,7 +222,7 @@ extern "C"
     uint32_t VCI_LogoutReceiveCallback(uint32_t DevIndex);
 
     uint32_t VCI_Transmit(uint32_t DevType,uint32_t DevIndex,uint32_t CANIndex,PVCI_CAN_OBJ pSend,uint32_t Len);
-    uint32_t VCI_Receive(uint32_t DevType,uint32_t DevIndex,uint32_t CANIndex,PVCI_CAN_OBJ pReceive,uint32_t Len,uint32_t WaitTime=0);
+    uint32_t VCI_Receive(uint32_t DevType,uint32_t DevIndex,uint32_t CANIndex,PVCI_CAN_OBJ pReceive,uint32_t Len,uint32_t WaitTime);
 
 #ifdef __cplusplus
 }

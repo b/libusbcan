@@ -116,6 +116,9 @@ struct usbcan_bus_config
     void                 *arg;
 };
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 uint32_t usbcan_library_init();
 uint32_t usbcan_library_close();
 
@@ -125,9 +128,12 @@ uint32_t usbcan_reset(uint32_t dev, uint32_t bus);
 uint32_t usbcan_stop(uint32_t dev, uint32_t bus);
 
 uint32_t usbcan_send(uint32_t dev, uint32_t bus, struct can_msg *msg);
-uint32_t usbcan_send(uint32_t dev, uint32_t bus, struct can_msg *msgs, uint32_t len);
+uint32_t usbcan_send_n(uint32_t dev, uint32_t bus, struct can_msg *msgs, uint32_t len);
 
 uint32_t usbcan_set_filters(uint32_t dev, uint32_t bus, struct usbcan_filter *filters, uint8_t num_filters);
 uint32_t usbcan_clear_filters(uint32_t dev, uint32_t bus);
 uint32_t usbcan_register_callback(uint32_t dev, uint32_t bus, usbcan_cb callback, void *arg);
 uint32_t usbcan_deregister_callback(uint32_t dev, uint32_t bus);
+#ifdef __cplusplus
+}
+#endif

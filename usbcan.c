@@ -163,11 +163,11 @@ usbcan_stop(uint32_t dev, uint32_t bus)
 uint32_t
 usbcan_send(uint32_t dev, uint32_t bus, struct can_msg *msg)
 {
-    return usbcan_send(dev, bus, msg, 1);
+    return usbcan_send_n(dev, bus, msg, 1);
 }
 
 uint32_t
-usbcan_send(uint32_t dev, uint32_t bus, struct can_msg *msgs, uint32_t len)
+usbcan_send_n(uint32_t dev, uint32_t bus, struct can_msg *msgs, uint32_t len)
 {
     int status;
 
@@ -299,7 +299,7 @@ usbcan_callback_dispatcher(uint32_t dev, uint32_t bus, uint32_t len)
 		    VCI_CAN_OBJ vci_msg;
 		    struct can_msg msg;
 
-		    int msgs_read = VCI_Receive(state.type, dev, bus, &vci_msg, 1);
+		    int msgs_read = VCI_Receive(state.type, dev, bus, &vci_msg, 1, 0);
 		    if (msgs_read == 1)
 			{
 			    msg.id = vci_msg.ID;
