@@ -175,8 +175,10 @@ usbcan_send(uint32_t dev, uint32_t bus, struct can_msg *msgs, uint32_t len)
 	{
 	    VCI_CAN_OBJ msg;
 
-	    msg.ID = msgs[i].id;
+	    msg.ID = msgs[i].id & ID_MASK;
 	    msg.SendType = 0;
+	    msg.RemoteFlag = (msgs[i].id & RTR_FLAG) > 0 ? 1 : 0;
+	    msg.ExternFlag = (msgs[i].id & EXT_FLAG) > 0 ? 1 : 0;
 
 	    for (int j = 0; j < msgs[i].len; j++)
 		{
