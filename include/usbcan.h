@@ -1,7 +1,5 @@
 #include <stdint.h>
 
-#include "ginkgo.h"
-
 #define CAN1  0
 #define CAN2  1
 
