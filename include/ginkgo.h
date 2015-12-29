@@ -1,7 +1,7 @@
 /*
 ******************************************************************************
 * @file     : ControlCAN.h
-* @Copyright: ViewTool 
+* @Copyright: ViewTool
 * @Revision : ver 1.0
 * @Date     : 2014/12/29 9:28
 * @brief    : ControlCAN demo
@@ -11,35 +11,13 @@
 * Copyright 2009-2014, ViewTool
 * http://www.viewtool.com/
 * All Rights Reserved
-* 
+*
 ******************************************************************************
 */
 #ifndef _GINKGO_H_
 #define _GINKGO_H_
 
 #include <stdint.h>
-
-const uint32_t CAN_SPEEDS[9][4] = {
-    {240, 12, 2, 1},
-    {120, 12, 2, 1},
-    {45, 13, 2, 1},
-    {27, 13, 2, 1},
-    {15, 20, 3, 1},
-    {18, 13, 2, 1},
-    {9, 13, 2, 1},
-    {4, 15, 2, 1},
-    {2, 15, 2, 1}
-};
-
-#define CAN_SPEED_10KBPS    0
-#define CAN_SPEED_20KBPS    1
-#define CAN_SPEED_50KBPS    2
-#define CAN_SPEED_83KBPS    3
-#define CAN_SPEED_100KBPS   4
-#define CAN_SPEED_125KBPS   5
-#define CAN_SPEED_250KBPS   6
-#define CAN_SPEED_500KBPS   7
-#define CAN_SPEED_1000KBPS  8
 
 //CAN type definition
 #define VCI_USBCAN1		3
@@ -66,7 +44,7 @@ const uint32_t CAN_SPEEDS[9][4] = {
 //Function return status
 #define	STATUS_OK					1
 #define STATUS_ERR					0
-	
+
 
 //1.Compatible with other CAN adapter data type
 typedef struct _VCI_BOARD_INFO
@@ -82,7 +60,7 @@ typedef struct _VCI_BOARD_INFO
     int8_t	str_hw_Type[40];	        // hardware type, null terminated
                                                 // for example: "USBCAN V1.00\0"
     uint16_t	Reserved[4];		        // reserved
-} VCI_BOARD_INFO, *PVCI_BOARD_INFO; 
+} VCI_BOARD_INFO, *PVCI_BOARD_INFO;
 
 //1.Ginkgo serial board data type
 typedef struct _VCI_BOARD_INFO_EX
@@ -92,7 +70,7 @@ typedef struct _VCI_BOARD_INFO_EX
     uint8_t		FirmwareVersion[4];	// firmware version
     uint8_t		HardwareVersion[4];	// hardware version
     uint8_t		SerialNumber[12];	// adapter serial number
-} VCI_BOARD_INFO_EX, *PVCI_BOARD_INFO_EX; 
+} VCI_BOARD_INFO_EX, *PVCI_BOARD_INFO_EX;
 
 //2.Definition of CAN frame
 typedef struct _VCI_CAN_OBJ
@@ -155,8 +133,8 @@ typedef struct _INIT_CONFIG
     uint8_t	Filter;		// filter type
                                 //      0: double filter
                                 //      1: single filter
-    uint8_t	Timing0;	// Timer 0(BTR0).	
-    uint8_t	Timing1;	// Timer 1(BTR1).	
+    uint8_t	Timing0;	// Timer 0(BTR0).
+    uint8_t	Timing1;	// Timer 1(BTR1).
     uint8_t	Mode;		// Mode
 } VCI_INIT_CONFIG, *PVCI_INIT_CONFIG;
 
@@ -165,9 +143,9 @@ typedef struct _INIT_CONFIG_EX
 {
     // CAN baud rate = 36MHz / (CAN_BRP) / (CAN_SJW + CAN_BS1 + CAN_BS2)
     uint32_t	CAN_BRP;	// range: 1-1024
-    uint8_t	CAN_SJW;	// range: 1-4          
-    uint8_t	CAN_BS1;	// range: 1-16          
-    uint8_t	CAN_BS2;	// range: 1-8          
+    uint8_t	CAN_SJW;	// range: 1-4
+    uint8_t	CAN_BS1;	// range: 1-16
+    uint8_t	CAN_BS2;	// range: 1-8
     uint8_t	CAN_Mode;	// CAN working mode
                                 //      0: normal
                                 //      1: loop back
@@ -251,4 +229,3 @@ extern "C"
 #endif
 
 #endif /* _GINKGO_H_ */
-
