@@ -1,4 +1,15 @@
+
+
+#ifndef USBCAN_H
+#define USBCAN_H
+
 #include <stdint.h>
+
+#ifdef __linux__
+#include <linux/can.h>
+#else
+#include "can_compat.h"
+#endif
 
 #define CAN1  0
 #define CAN2  1
@@ -84,36 +95,21 @@ const uint32_t CAN_SPEEDS[33][4] = {
 
 #define MAX_FILTERS 14
 
-#define ID_MASK  0x1FFFFFFF
-#define RTR_FLAG 0x80000000
-#define EXT_FLAG 0x40000000
-#define TS_FLAG  0x20000000
-
-struct can_msg
+struct usbcan_msg
 {
-    uint32_t id;
-    uint32_t flags;
     uint32_t timestamp;
-    uint8_t  len;
-    uint8_t  data[8];
+    struct can_frame frame;
 };
 
-typedef void(*usbcan_cb)(uint32_t dev, uint32_t bus, struct can_msg *msg, void *arg);
-
-struct usbcan_filter
-{
-    uint32_t flags;
-    uint32_t id;
-    uint32_t mask;
-};
+typedef void(*usbcan_cb)(uint32_t dev, uint32_t bus, struct usbcan_msg *msg, void *arg);
 
 struct usbcan_bus_config
 {
-    uint32_t              speed;
-    struct usbcan_filter *filters;
-    uint8_t               num_filters;
-    usbcan_cb             cb;
-    void                 *arg;
+    uint32_t           speed;
+    struct can_filter *filters;
+    uint8_t            num_filters;
+    usbcan_cb          cb;
+    void              *arg;
 };
 
 #ifdef __cplusplus
@@ -127,13 +123,15 @@ uint32_t usbcan_start(uint32_t dev, uint32_t bus);
 uint32_t usbcan_reset(uint32_t dev, uint32_t bus);
 uint32_t usbcan_stop(uint32_t dev, uint32_t bus);
 
-uint32_t usbcan_send(uint32_t dev, uint32_t bus, struct can_msg *msg);
-uint32_t usbcan_send_n(uint32_t dev, uint32_t bus, struct can_msg *msgs, uint32_t len);
+uint32_t usbcan_send(uint32_t dev, uint32_t bus, struct can_frame *frames);
+uint32_t usbcan_send_n(uint32_t dev, uint32_t bus, struct can_frame *frames, uint32_t len);
 
-uint32_t usbcan_set_filters(uint32_t dev, uint32_t bus, struct usbcan_filter *filters, uint8_t num_filters);
+uint32_t usbcan_set_filters(uint32_t dev, uint32_t bus, struct can_filter *filters, uint8_t num_filters);
 uint32_t usbcan_clear_filters(uint32_t dev, uint32_t bus);
 uint32_t usbcan_register_callback(uint32_t dev, uint32_t bus, usbcan_cb callback, void *arg);
 uint32_t usbcan_deregister_callback(uint32_t dev, uint32_t bus);
 #ifdef __cplusplus
 }
 #endif
+
+#endif /* USBCAN_H */
