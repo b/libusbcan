@@ -1,3 +1,10 @@
+/**
+ * usbcan.c -- ViewTool Ginkgo USB-CAN C API
+ *
+ */
+
+#include <stdio.h>
+#include "usbcan.h"
 #include <stdint.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -19,6 +26,7 @@ struct usbcan_state
 {
     uint32_t type;
     uint32_t num_devs;
+    uint32_t *devs;
     struct usbcan_cb_entry *callbacks;
     struct usbcan_cb_entry *tail;
 };
@@ -40,20 +48,7 @@ usbcan_library_init()
 	    return USBCAN_ERROR;
 	}
 
-    for (int dev = 0; dev < state.num_devs; dev++)
-	{
-	    int status = VCI_OpenDevice(state.type, dev, 0);
-	    if(status == STATUS_ERR)
-		{
-		    return USBCAN_ERROR;
-		}
-
-	    status = VCI_RegisterReceiveCallback(dev, usbcan_callback_dispatcher);
-	    if (status == STATUS_ERR)
-		{
-		    return USBCAN_ERROR;
-		}
-	}
+    state.devs = (uint32_t *)malloc(state.num_devs * sizeof(uint32_t));
 
     return USBCAN_OK;
 }
@@ -88,9 +83,40 @@ usbcan_library_close()
 }
 
 uint32_t
-usbcan_init(uint32_t dev, uint32_t bus, struct usbcan_bus_config *config)
+usbcan_dev_init(uint32_t dev)
 {
     if (state.num_devs <= dev)
+	{
+	    return USBCAN_ERROR;
+	}
+
+    if (state.devs[dev] > 0)
+	{
+	    return USBCAN_OK;
+	}
+
+    int status = VCI_OpenDevice(state.type, dev, 0);
+    if(status == STATUS_ERR)
+	{
+	    return USBCAN_ERROR;
+	}
+
+    status = VCI_RegisterReceiveCallback(dev, usbcan_callback_dispatcher);
+    if (status == STATUS_ERR)
+	{
+	    return USBCAN_ERROR;
+	}
+
+    state.devs[dev] = 1;
+
+    return USBCAN_OK;
+}
+
+uint32_t
+usbcan_init(uint32_t dev, uint32_t bus, struct usbcan_bus_config *config)
+{
+    int status = usbcan_dev_init(dev);
+    if (status == USBCAN_ERROR)
 	{
 	    return USBCAN_ERROR;
 	}
@@ -107,7 +133,7 @@ usbcan_init(uint32_t dev, uint32_t bus, struct usbcan_bus_config *config)
     init_config.CAN_TXFP = 1;
     init_config.CAN_RELAY = 0;
 
-    int status = VCI_InitCANEx(state.type, dev, bus, &init_config);
+    status = VCI_InitCANEx(state.type, dev, bus, &init_config);
     if(status == STATUS_ERR)
 	{
 	    return USBCAN_ERROR;
@@ -161,13 +187,13 @@ usbcan_stop(uint32_t dev, uint32_t bus)
 }
 
 uint32_t
-usbcan_send(uint32_t dev, uint32_t bus, struct can_msg *msg)
+usbcan_send(uint32_t dev, uint32_t bus, struct can_frame *frame)
 {
-    return usbcan_send_n(dev, bus, msg, 1);
+    return usbcan_send_n(dev, bus, frame, 1);
 }
 
 uint32_t
-usbcan_send_n(uint32_t dev, uint32_t bus, struct can_msg *msgs, uint32_t len)
+usbcan_send_n(uint32_t dev, uint32_t bus, struct can_frame *frames, uint32_t len)
 {
     int status;
 
@@ -175,16 +201,18 @@ usbcan_send_n(uint32_t dev, uint32_t bus, struct can_msg *msgs, uint32_t len)
 	{
 	    VCI_CAN_OBJ msg;
 
-	    msg.ID = msgs[i].id & ID_MASK;
+	    msg.ID = (frames[i].can_id & CAN_EFF_FLAG) > 0
+		? frames[i].can_id & CAN_EFF_MASK
+		: frames[i].can_id & CAN_SFF_MASK;
 	    msg.SendType = 0;
-	    msg.RemoteFlag = (msgs[i].id & RTR_FLAG) > 0 ? 1 : 0;
-	    msg.ExternFlag = (msgs[i].id & EXT_FLAG) > 0 ? 1 : 0;
+	    msg.RemoteFlag = (frames[i].can_id & CAN_RTR_FLAG) > 0 ? 1 : 0;
+	    msg.ExternFlag = (frames[i].can_id & CAN_EFF_FLAG) > 0 ? 1 : 0;
 
-	    for (int j = 0; j < msgs[i].len; j++)
+	    for (int j = 0; j < frames[i].can_dlc; j++)
 		{
-		    msg.Data[j] = msgs[i].data[j];
+		    msg.Data[j] = frames[i].data[j];
 		}
-	    msg.DataLen = msgs[i].len;
+	    msg.DataLen = frames[i].can_dlc;
 
 	    status = VCI_Transmit(state.type, dev, bus, &msg, 1);
 	    if (status == STATUS_ERR)
@@ -198,7 +226,7 @@ usbcan_send_n(uint32_t dev, uint32_t bus, struct can_msg *msgs, uint32_t len)
 }
 
 uint32_t
-usbcan_set_filters(uint32_t dev, uint32_t bus, struct usbcan_filter *filters, uint8_t num_filters)
+usbcan_set_filters(uint32_t dev, uint32_t bus, struct can_filter *filters, uint8_t num_filters)
 {
     int status;
 
@@ -213,7 +241,7 @@ usbcan_set_filters(uint32_t dev, uint32_t bus, struct usbcan_filter *filters, ui
 	{
 	    int mode = 1;
 
-	    if (filters[i].mask == 0 && filters[i].id > 0)
+	    if (filters[i].can_mask == 0 && filters[i].can_id > 0)
 		{
 		    mode = 0;
 		}
@@ -223,12 +251,16 @@ usbcan_set_filters(uint32_t dev, uint32_t bus, struct usbcan_filter *filters, ui
 	    filter_config.Enable = 1;
 	    filter_config.ExtFrame = 0;
 	    filter_config.FilterMode = mode;
-	    filter_config.ID_IDE = (filters[i].id & EXT_FLAG) > 0 ? 1 : 0;
-	    filter_config.ID_RTR = (filters[i].id & RTR_FLAG) > 0 ? 1 : 0;
-	    filter_config.ID_Std_Ext = filters[i].id & ID_MASK;
-	    filter_config.MASK_IDE = (filters[i].mask & EXT_FLAG) > 0 ? 1 : 0;
-	    filter_config.MASK_RTR = (filters[i].mask & RTR_FLAG) > 0 ? 1 : 0;
-	    filter_config.MASK_Std_Ext = filters[i].mask & ID_MASK;
+	    filter_config.ID_IDE = (filters[i].can_id & CAN_EFF_FLAG) > 0 ? 1 : 0;
+	    filter_config.ID_RTR = (filters[i].can_id & CAN_RTR_FLAG) > 0 ? 1 : 0;
+	    filter_config.ID_Std_Ext = (filters[i].can_id & CAN_EFF_FLAG) > 0
+		? filters[i].can_id & CAN_EFF_MASK
+		: filters[i].can_id & CAN_SFF_MASK;
+	    filter_config.MASK_IDE = (filters[i].can_mask & CAN_EFF_FLAG) > 0 ? 1 : 0;
+	    filter_config.MASK_RTR = (filters[i].can_mask & CAN_RTR_FLAG) > 0 ? 1 : 0;
+	    filter_config.MASK_Std_Ext = (filters[i].can_mask & CAN_EFF_FLAG) > 0
+		? filters[i].can_mask & CAN_EFF_MASK
+		: filters[i].can_mask & CAN_SFF_MASK;
 
 	    status = VCI_SetFilter(state.type, dev, bus, &filter_config);
 	    if(status == STATUS_ERR)
@@ -297,33 +329,32 @@ usbcan_callback_dispatcher(uint32_t dev, uint32_t bus, uint32_t len)
 	    for (int i = 0; i < msgs_avail; i++)
 		{
 		    VCI_CAN_OBJ vci_msg;
-		    struct can_msg msg;
+		    struct usbcan_msg msg;
 
 		    int msgs_read = VCI_Receive(state.type, dev, bus, &vci_msg, 1, 0);
 		    if (msgs_read == 1)
 			{
-			    msg.id = vci_msg.ID;
+			    msg.frame.can_id = vci_msg.ID;
 
 			    if (vci_msg.TimeFlag > 0)
 				{
-				    msg.flags |= TS_FLAG;
 				    msg.timestamp = vci_msg.TimeStamp;
 				}
 
 			    if (vci_msg.RemoteFlag > 0)
 				{
-				    msg.flags |= RTR_FLAG;
+				    msg.frame.can_id |= CAN_RTR_FLAG;
 				}
 
 			    if (vci_msg.ExternFlag > 0)
 				{
-				    msg.flags |= EXT_FLAG;
+				    msg.frame.can_id |= CAN_EFF_FLAG;
 				}
 
-			    msg.len = vci_msg.DataLen;
+			    msg.frame.can_dlc = vci_msg.DataLen;
 			    for (int j = 0; j < vci_msg.DataLen; j++)
 				{
-				    msg.data[j] = vci_msg.Data[j];
+				    msg.frame.data[j] = vci_msg.Data[j];
 				}
 
 			    cbe->cb(dev, bus, &msg, cbe->arg);
