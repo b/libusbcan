@@ -66,17 +66,19 @@ usbcan_library_close()
 
     for (int dev = 0; dev < state.num_devs; dev++)
 	{
-	    int status = VCI_CloseDevice(state.type, dev);
-	    if(status == STATUS_ERR)
-		{
-		    return USBCAN_ERROR;
-		}
+	    if (state.devs[dev] > 0) {
+		int status = VCI_CloseDevice(state.type, dev);
+		if(status == STATUS_ERR)
+		    {
+			return USBCAN_ERROR;
+		    }
 
-	    status = VCI_LogoutReceiveCallback(dev);
-	    if (status == STATUS_ERR)
-		{
-		    return USBCAN_ERROR;
-		}
+		status = VCI_LogoutReceiveCallback(dev);
+		if (status == STATUS_ERR)
+		    {
+			return USBCAN_ERROR;
+		    }
+	    }
 	}
 
     return USBCAN_OK;
