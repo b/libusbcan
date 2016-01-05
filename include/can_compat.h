@@ -1,3 +1,6 @@
+#ifndef CAN_COMPAT_H
+#define CAN_COMPAT_H
+
 #include <stdint.h>
 
 typedef uint8_t __u8;
@@ -36,3 +39,5 @@ struct can_filter {
     canid_t can_id;
     canid_t can_mask;
 };
+
+#endif /* CAN_COMPAT_H */
