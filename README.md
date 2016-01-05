@@ -76,10 +76,10 @@ libusbcan does some internal bookkeeping that must be performed explicitly befor
 	void
 	usbcandump_callback(uint32_t dev, uint32_t bus, struct usbcan_msg *msg, void *arg)
 	{
-		printf(" usbcan%i:%i  %X   [%i] ", dev, bus, frame->can_id, frame->can_dlc);
+		printf(" usbcan%i:%i  %X   [%i] ", dev, bus, msg->frame.can_id, msg->frame.can_dlc);
 		for(int j = 0; j < CAN_MAX_DLEN; j++)
 		{
-			printf(" %02X", frame->data[j]);
+			printf(" %02X", msg->frame.data[j]);
 		}
 		printf("\n");
 	}
