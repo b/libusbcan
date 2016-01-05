@@ -1,21 +1,21 @@
 /*
-  
+
    usbcan.c -- ViewTool Ginkgo USB-CAN C API
- 
+
    Copyright 2015 Benjamin Black
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
    You may obtain a copy of the License at
-   
+
        http://www.apache.org/licenses/LICENSE-2.0
- 
+
    Unless required by applicable law or agreed to in writing, software
    distributed under the License is distributed on an "AS IS" BASIS,
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
- 
+
 */
 
 #include <stdio.h>
@@ -343,42 +343,42 @@ usbcan_callback_dispatcher(uint32_t dev, uint32_t bus, uint32_t len)
     if ((cbe = usbcan_get_callback(dev, bus)) != NULL)
 	{
 	    int msgs_avail = VCI_GetReceiveNum(state.type, dev, bus);
-	    for (int i = 0; i < msgs_avail; i++)
+	    PVCI_CAN_OBJ vci_msgs = (PVCI_CAN_OBJ)malloc(sizeof(VCI_CAN_OBJ) * msgs_avail);
+	    int msgs_read = VCI_Receive(state.type, dev, bus, vci_msgs, msgs_avail, 0);
+
+	    for (int i = 0; i < msgs_read; i++)
 		{
-		    VCI_CAN_OBJ vci_msg;
 		    struct usbcan_msg msg;
+		    msg.frame.can_id = vci_msgs[i].ID;
 
-		    int msgs_read = VCI_Receive(state.type, dev, bus, &vci_msg, 1, 0);
-		    if (msgs_read == 1)
+		    if (vci_msgs[i].TimeFlag > 0)
 			{
-			    msg.frame.can_id = vci_msg.ID;
-
-			    if (vci_msg.TimeFlag > 0)
-				{
-				    msg.timestamp = vci_msg.TimeStamp;
-				}
-
-			    if (vci_msg.RemoteFlag > 0)
-				{
-				    msg.frame.can_id |= CAN_RTR_FLAG;
-				}
-
-			    if (vci_msg.ExternFlag > 0)
-				{
-				    msg.frame.can_id |= CAN_EFF_FLAG;
-				}
-
-			    msg.frame.can_dlc = vci_msg.DataLen;
-			    for (int j = 0; j < vci_msg.DataLen; j++)
-				{
-				    msg.frame.data[j] = vci_msg.Data[j];
-				}
-
-			    cbe->cb(dev, bus, &msg, cbe->arg);
+			    msg.timestamp = vci_msgs[i].TimeStamp;
 			}
+
+		    if (vci_msgs[i].RemoteFlag > 0)
+			{
+			    msg.frame.can_id |= CAN_RTR_FLAG;
+			}
+
+		    if (vci_msgs[i].ExternFlag > 0)
+			{
+			    msg.frame.can_id |= CAN_EFF_FLAG;
+			}
+
+		    msg.frame.can_dlc = vci_msgs[i].DataLen;
+		    for (int j = 0; j < vci_msgs[i].DataLen; j++)
+			{
+			    msg.frame.data[j] = vci_msgs[i].Data[j];
+			}
+
+		    cbe->cb(dev, bus, &msg, cbe->arg);
 		}
+
+	    free(vci_msgs);
 	}
 }
+
 
 uint32_t
 usbcan_register_callback(uint32_t dev, uint32_t bus, usbcan_cb cb, void *arg)
