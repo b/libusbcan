@@ -3,7 +3,7 @@ RM = rm
 CFLAGS = -Wall
 # Macro definition
 DEFS = -D OS_UNIX
-CFLAGS += $(DEFS)
+CFLAGS += $(DEFS) -std=c99 -fPIC
 # The target file
 TARGET = libusbcan
 # The source file
