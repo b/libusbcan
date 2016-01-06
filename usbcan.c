@@ -349,10 +349,11 @@ usbcan_callback_dispatcher(uint32_t dev, uint32_t bus, uint32_t len)
 	    memset(vci_msgs, 0, sizeof(VCI_CAN_OBJ) * msgs_avail);
 
 	    int msgs_read = VCI_Receive(state.type, dev, bus, vci_msgs, msgs_avail, 0);
-
 	    for (int i = 0; i < msgs_read; i++)
 		{
 		    struct usbcan_msg msg;
+		    memset(&msg, 0, sizeof(struct usbcan_msg));
+
 		    msg.frame.can_id = vci_msgs[i].ID;
 
 		    if (vci_msgs[i].TimeFlag > 0)
