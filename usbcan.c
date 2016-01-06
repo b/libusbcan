@@ -18,12 +18,11 @@
 
 */
 
-#include <stdio.h>
-#include "usbcan.h"
 #include <stdint.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "usbcan.h"
 #include "ginkgo.h"
@@ -64,6 +63,7 @@ usbcan_library_init()
 	}
 
     state.devs = (uint32_t *)malloc(state.num_devs * sizeof(uint32_t));
+    memset(state.devs, 0, state.num_devs * sizeof(uint32_t));
 
     return USBCAN_OK;
 }
@@ -81,19 +81,20 @@ usbcan_library_close()
 
     for (int dev = 0; dev < state.num_devs; dev++)
 	{
-	    if (state.devs[dev] > 0) {
-		int status = VCI_CloseDevice(state.type, dev);
-		if(status == STATUS_ERR)
-		    {
-			return USBCAN_ERROR;
-		    }
+	    if (state.devs[dev] > 0)
+		{
+		    int status = VCI_CloseDevice(state.type, dev);
+		    if(status == STATUS_ERR)
+			{
+			    return USBCAN_ERROR;
+			}
 
-		status = VCI_LogoutReceiveCallback(dev);
-		if (status == STATUS_ERR)
-		    {
-			return USBCAN_ERROR;
-		    }
-	    }
+		    status = VCI_LogoutReceiveCallback(dev);
+		    if (status == STATUS_ERR)
+			{
+			    return USBCAN_ERROR;
+			}
+		}
 	}
 
     return USBCAN_OK;
@@ -343,7 +344,10 @@ usbcan_callback_dispatcher(uint32_t dev, uint32_t bus, uint32_t len)
     if ((cbe = usbcan_get_callback(dev, bus)) != NULL)
 	{
 	    int msgs_avail = VCI_GetReceiveNum(state.type, dev, bus);
+
 	    PVCI_CAN_OBJ vci_msgs = (PVCI_CAN_OBJ)malloc(sizeof(VCI_CAN_OBJ) * msgs_avail);
+	    memset(vci_msgs, 0, sizeof(VCI_CAN_OBJ) * msgs_avail);
+
 	    int msgs_read = VCI_Receive(state.type, dev, bus, vci_msgs, msgs_avail, 0);
 
 	    for (int i = 0; i < msgs_read; i++)
