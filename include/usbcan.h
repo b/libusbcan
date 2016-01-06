@@ -115,7 +115,7 @@ struct usbcan_msg
     struct can_frame frame;
 };
 
-typedef void(*usbcan_cb)(uint32_t dev, uint32_t bus, struct usbcan_msg *msg, void *arg);
+typedef void(*usbcan_cb)(uint32_t dev, uint32_t bus, struct usbcan_msg *msgs, uint32_t n, void *arg);
 
 struct usbcan_bus_config
 {
@@ -137,7 +137,7 @@ uint32_t usbcan_start(uint32_t dev, uint32_t bus);
 uint32_t usbcan_reset(uint32_t dev, uint32_t bus);
 uint32_t usbcan_stop(uint32_t dev, uint32_t bus);
 
-uint32_t usbcan_send(uint32_t dev, uint32_t bus, struct can_frame *frames);
+uint32_t usbcan_send(uint32_t dev, uint32_t bus, struct can_frame *frame);
 uint32_t usbcan_send_n(uint32_t dev, uint32_t bus, struct can_frame *frames, uint32_t len);
 
 uint32_t usbcan_set_filters(uint32_t dev, uint32_t bus, struct can_filter *filters, uint8_t num_filters);

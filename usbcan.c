@@ -146,7 +146,7 @@ usbcan_init(uint32_t dev, uint32_t bus, struct usbcan_bus_config *config)
     init_config.CAN_BS1 = CAN_SPEEDS[config->speed][1];
     init_config.CAN_BS2 = CAN_SPEEDS[config->speed][2];
     init_config.CAN_SJW = CAN_SPEEDS[config->speed][3];
-    init_config.CAN_NART = 0;
+    init_config.CAN_NART = 1;
     init_config.CAN_RFLM = 0;
     init_config.CAN_TXFP = 1;
     init_config.CAN_RELAY = 0;
@@ -213,34 +213,31 @@ usbcan_send(uint32_t dev, uint32_t bus, struct can_frame *frame)
 uint32_t
 usbcan_send_n(uint32_t dev, uint32_t bus, struct can_frame *frames, uint32_t len)
 {
-    int status;
+    int sent = 0;
 
+    PVCI_CAN_OBJ msgs = (PVCI_CAN_OBJ)malloc(sizeof(VCI_CAN_OBJ) * len);
+    memset(msgs, 0, sizeof(VCI_CAN_OBJ) * len);
     for (int i = 0; i < len; i++)
 	{
-	    VCI_CAN_OBJ msg;
-
-	    msg.ID = (frames[i].can_id & CAN_EFF_FLAG) > 0
+	    msgs[i].ID = (frames[i].can_id & CAN_EFF_FLAG) > 0
 		? frames[i].can_id & CAN_EFF_MASK
 		: frames[i].can_id & CAN_SFF_MASK;
-	    msg.SendType = 0;
-	    msg.RemoteFlag = (frames[i].can_id & CAN_RTR_FLAG) > 0 ? 1 : 0;
-	    msg.ExternFlag = (frames[i].can_id & CAN_EFF_FLAG) > 0 ? 1 : 0;
+	    msgs[1].SendType = 0;
+	    msgs[1].RemoteFlag = (frames[i].can_id & CAN_RTR_FLAG) > 0 ? 1 : 0;
+	    msgs[1].ExternFlag = (frames[i].can_id & CAN_EFF_FLAG) > 0 ? 1 : 0;
 
 	    for (int j = 0; j < frames[i].can_dlc; j++)
 		{
-		    msg.Data[j] = frames[i].data[j];
+		    msgs[i].Data[j] = frames[i].data[j];
 		}
-	    msg.DataLen = frames[i].can_dlc;
-
-	    status = VCI_Transmit(state.type, dev, bus, &msg, 1);
-	    if (status == STATUS_ERR)
-		{
-		    usbcan_reset(dev, bus);
-		    return USBCAN_ERROR;
-		}
+	    msgs[i].DataLen = frames[i].can_dlc;
 	}
 
-    return USBCAN_OK;
+    sent = VCI_Transmit(state.type, dev, bus, msgs, len);
+
+    free(msgs);
+
+    return sent;
 }
 
 uint32_t
@@ -344,42 +341,53 @@ usbcan_callback_dispatcher(uint32_t dev, uint32_t bus, uint32_t len)
     if ((cbe = usbcan_get_callback(dev, bus)) != NULL)
 	{
 	    int msgs_avail = VCI_GetReceiveNum(state.type, dev, bus);
-
 	    PVCI_CAN_OBJ vci_msgs = (PVCI_CAN_OBJ)malloc(sizeof(VCI_CAN_OBJ) * msgs_avail);
 	    memset(vci_msgs, 0, sizeof(VCI_CAN_OBJ) * msgs_avail);
 
-	    int msgs_read = VCI_Receive(state.type, dev, bus, vci_msgs, msgs_avail, 0);
-	    for (int i = 0; i < msgs_read; i++)
+	    struct usbcan_msg *msgs = (struct usbcan_msg *)malloc(sizeof(struct usbcan_msg) * msgs_avail);
+	    memset(msgs, 0, sizeof(struct usbcan_msg) * msgs_avail);
+
+	    int msgs_read;
+	    while (msgs_avail > 0)
 		{
-		    struct usbcan_msg msg;
-		    memset(&msg, 0, sizeof(struct usbcan_msg));
-
-		    msg.frame.can_id = vci_msgs[i].ID;
-
-		    if (vci_msgs[i].TimeFlag > 0)
+		    msgs_read = 0;
+		    msgs_read = VCI_Receive(state.type, dev, bus, vci_msgs, msgs_avail, -1);
+		    if(msgs_read == 0 || msgs_read == 0xFFFFFFFF)
 			{
-			    msg.timestamp = vci_msgs[i].TimeStamp;
+			    goto dispatcher_cleanup;
 			}
 
-		    if (vci_msgs[i].RemoteFlag > 0)
+		    for (int i = 0; i < msgs_read; i++)
 			{
-			    msg.frame.can_id |= CAN_RTR_FLAG;
-			}
+			    msgs[i].frame.can_id = vci_msgs[i].ID;
 
-		    if (vci_msgs[i].ExternFlag > 0)
-			{
-			    msg.frame.can_id |= CAN_EFF_FLAG;
-			}
+			    if (vci_msgs[i].TimeFlag > 0)
+				{
+				    msgs[i].timestamp = vci_msgs[i].TimeStamp;
+				}
 
-		    msg.frame.can_dlc = vci_msgs[i].DataLen;
-		    for (int j = 0; j < vci_msgs[i].DataLen; j++)
-			{
-			    msg.frame.data[j] = vci_msgs[i].Data[j];
-			}
+			    if (vci_msgs[i].RemoteFlag > 0)
+				{
+				    msgs[i].frame.can_id |= CAN_RTR_FLAG;
+				}
 
-		    cbe->cb(dev, bus, &msg, cbe->arg);
+			    if (vci_msgs[i].ExternFlag > 0)
+				{
+				    msgs[i].frame.can_id |= CAN_EFF_FLAG;
+				}
+
+			    msgs[i].frame.can_dlc = vci_msgs[i].DataLen;
+			    for (int j = 0; j < vci_msgs[i].DataLen; j++)
+				{
+				    msgs[i].frame.data[j] = vci_msgs[i].Data[j];
+				}
+			}
+		    cbe->cb(dev, bus, msgs, msgs_read, cbe->arg);
+
+		    msgs_avail -= msgs_read;
 		}
-
+	dispatcher_cleanup:
+	    free(msgs);
 	    free(vci_msgs);
 	}
 }
