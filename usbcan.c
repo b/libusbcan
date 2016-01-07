@@ -166,10 +166,13 @@ usbcan_init(uint32_t dev, uint32_t bus, struct usbcan_bus_config *config)
 	usbcan_set_filters(dev, bus, config->filters, config->num_filters);
     }
 
-    status = usbcan_register_callback(dev, bus, config->cb, config->arg);
-    if (status == USBCAN_ERROR)
+    if (config->cb != NULL)
     {
-	return USBCAN_ERROR;
+	status = usbcan_register_callback(dev, bus, config->cb, config->arg);
+	if (status == USBCAN_ERROR)
+	{
+	    return USBCAN_ERROR;
+	}
     }
 
     return USBCAN_OK;
