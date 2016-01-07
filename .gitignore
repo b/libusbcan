@@ -3,4 +3,7 @@
 *.so
 *.dylib
 .DS_Store
-
+CMakeCache.txt
+CMakeFiles
+*.cmake
+Makefile
