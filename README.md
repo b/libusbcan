@@ -1,13 +1,10 @@
 # libusbcan
 
-libusbcan provides a simple, pure C API for the ViewTool Ginkgo USB-CAN interfaces. It also adds functionality absent
-from the standard Viewtool API. The most significant are callbacks for received messages are per bus rather than per
-device and callbacks can have an argument associated with them. Where possible, the Linux SocketCAN data structures are
-used.
+libusbcan provides a simple, pure C API for the [ViewTool Ginkgo USB-CAN](http://www.viewtool.com/index.php?option=com_content&view=article&id=201&Itemid=27) interfaces. It also adds functionality absent from the standard Viewtool API. The most significant are callbacks for received messages are per bus rather than per device and callbacks can have an argument associated with them. Where possible, the Linux SocketCAN data structures are used.
 
 ViewTool only distributes binaries for their USB-CAN/Ginkgo libraries, so platform support is limited to the 4 they
-provide: OS X, Linux x86, Linux x86_64, and Raspberry Pi. Building libusbcan requires CMake 3.0.1 or later. Once you
-have CMake installed, just
+provide: OS X, Linux x86, Linux x86_64, and Raspberry Pi. Building libusbcan requires [CMake](http://cmake.org) 3.0.1
+or later. Once you have CMake installed, just
 
 	cmake .
 	make
