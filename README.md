@@ -5,6 +5,15 @@ from the standard Viewtool API. The most significant are callbacks for received 
 device and callbacks can have an argument associated with them. Where possible, the Linux SocketCAN data structures are
 used.
 
+ViewTool only distributes binaries for their USB-CAN/Ginkgo libraries, so platform support is limited to the 4 they
+provide: OS X, Linux x86, Linux x86_64, and Raspberry Pi. Building libusbcan requires CMake 3.0.1 or later. Once you
+have CMake installed, just
+
+	cmake .
+	make
+
+This will build the library and the usbcandump example utility.
+
 # Library lifecycle
 
 libusbcan does some internal bookkeeping that must be performed explicitly before and after it is used.
