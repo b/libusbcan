@@ -26,7 +26,7 @@ usbcandump_callback(uint32_t dev, uint32_t bus, struct usbcan_msg *msgs, uint32_
 	{
 	    count++;
 	    printf(" usbcan%i:%i  %3X   [%i] ", dev, bus, msgs[i].frame.can_id, msgs[i].frame.can_dlc);
-	    for(int j = 0; j < CAN_MAX_DLEN; j++)
+	    for(int j = 0; j < 8; j++)
 		{
 		    printf(" %02X", msgs[i].frame.data[j]);
 		}

@@ -23,16 +23,13 @@ typedef __u32 canid_t;
 
 typedef __u32 can_err_mask_t;
 
-#define CAN_MAX_DLC 8
-#define CAN_MAX_DLEN 8
-
 struct can_frame {
     canid_t can_id;  /* 32 bit CAN_ID + EFF/RTR/ERR flags */
     __u8    can_dlc; /* frame payload length in byte (0 .. CAN_MAX_DLEN) */
     __u8    __pad;   /* padding */
     __u8    __res0;  /* reserved / padding */
     __u8    __res1;  /* reserved / padding */
-    __u8    data[CAN_MAX_DLEN] __attribute__((aligned(8)));
+    __u8    data[8] __attribute__((aligned(8)));
 };
 
 struct can_filter {
