@@ -1,24 +1,25 @@
 /*
 
-   usbcan.c -- ViewTool Ginkgo USB-CAN C API
+  usbcan.c -- ViewTool Ginkgo USB-CAN C API
 
-   Copyright 2015 Benjamin Black
+  Copyright 2015 Benjamin Black
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
 
-       http://www.apache.org/licenses/LICENSE-2.0
+  http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
 
 */
 
 #include <stdint.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -27,17 +28,15 @@
 #include "usbcan.h"
 #include "ginkgo.h"
 
-struct usbcan_cb_entry
-{
-    uint32_t        dev;
-    uint32_t        bus;
-    usbcan_cb       cb;
-    void           *arg;
+struct usbcan_cb_entry {
+    uint32_t dev;
+    uint32_t bus;
+    usbcan_cb cb;
+    void *arg;
     struct usbcan_cb_entry *next;
 };
 
-struct usbcan_state
-{
+struct usbcan_state {
     uint32_t type;
     uint32_t num_devs;
     uint32_t *devs;
@@ -47,96 +46,77 @@ struct usbcan_state
 
 struct usbcan_state state;
 
-void usbcan_callback_dispatcher(uint32_t dev, uint32_t bus, uint32_t len);
+void usbcan_callback_dispatcher(uint32_t dev, uint32_t bus, uint32_t n);
 
-uint32_t
-usbcan_library_init()
-{
+bool usbcan_library_init() {
     state.type = VCI_USBCAN2;
 
     state.callbacks = state.tail = NULL;
 
     state.num_devs = VCI_ScanDevice(1);
-    if(state.num_devs == 0)
-    {
-	return USBCAN_ERROR;
+    if (state.num_devs == 0) {
+        return false;
     }
 
-    state.devs = (uint32_t *)malloc(state.num_devs * sizeof(uint32_t));
-    memset(state.devs, 0, state.num_devs * sizeof(uint32_t));
+    state.devs = (uint32_t *)calloc(state.num_devs, sizeof(uint32_t));
 
-    return USBCAN_OK;
+    return true;
 }
 
-uint32_t
-usbcan_library_close()
-{
-    struct usbcan_cb_entry *cbe;
-    cbe = state.callbacks;
-    while(cbe != NULL)
-    {
-	usbcan_deregister_callback(cbe->dev, cbe->bus);
-	cbe = cbe->next;
+bool usbcan_library_close() {
+    struct usbcan_cb_entry *cbe = state.callbacks;
+
+    while (cbe != NULL) {
+        usbcan_deregister_callback(cbe->dev, cbe->bus);
+        cbe = cbe->next;
     }
 
-    for (int dev = 0; dev < state.num_devs; dev++)
-    {
-	if (state.devs[dev] > 0)
-	{
-	    int status = VCI_CloseDevice(state.type, dev);
-	    if(status == STATUS_ERR)
-	    {
-		return USBCAN_ERROR;
-	    }
+    for (uint32_t dev = 0; dev < state.num_devs; dev++) {
+        if (state.devs[dev] > 0) {
+            int ginkgo_status = VCI_CloseDevice(state.type, dev);
+            if (ginkgo_status == STATUS_ERR) {
+                return false;
+            }
 
-	    status = VCI_LogoutReceiveCallback(dev);
-	    if (status == STATUS_ERR)
-	    {
-		return USBCAN_ERROR;
-	    }
-	}
+            ginkgo_status = VCI_LogoutReceiveCallback(dev);
+            if (ginkgo_status == STATUS_ERR) {
+                return false;
+            }
+        }
     }
 
-    return USBCAN_OK;
+    return true;
 }
 
-uint32_t
-usbcan_dev_init(uint32_t dev)
-{
-    if (state.num_devs <= dev)
-    {
-	return USBCAN_ERROR;
+bool usbcan_dev_init(uint32_t dev) {
+    if (state.num_devs <= dev) {
+        return false;
     }
 
-    if (state.devs[dev] > 0)
-    {
-	return USBCAN_OK;
+    if (state.devs[dev] > 0) {
+        return true;
     }
 
-    int status = VCI_OpenDevice(state.type, dev, 0);
-    if(status == STATUS_ERR)
-    {
-	return USBCAN_ERROR;
+    int ginkgo_status = VCI_OpenDevice(state.type, dev, 0);
+    if (ginkgo_status == STATUS_ERR) {
+        return false;
     }
 
-    status = VCI_RegisterReceiveCallback(dev, usbcan_callback_dispatcher);
-    if (status == STATUS_ERR)
-    {
-	return USBCAN_ERROR;
+    ginkgo_status =
+        VCI_RegisterReceiveCallback(dev, usbcan_callback_dispatcher);
+    if (ginkgo_status == STATUS_ERR) {
+        return false;
     }
 
     state.devs[dev] = 1;
 
-    return USBCAN_OK;
+    return true;
 }
 
-uint32_t
-usbcan_init(uint32_t dev, uint32_t bus, struct usbcan_bus_config *config)
-{
-    int status = usbcan_dev_init(dev);
-    if (status == USBCAN_ERROR)
-    {
-	return USBCAN_ERROR;
+bool usbcan_init(uint32_t dev, uint32_t bus, struct usbcan_bus_config *config) {
+    bool status = usbcan_dev_init(dev);
+    if (!status) {
+        return false;
     }
 
     VCI_INIT_CONFIG_EX init_config;
@@ -151,305 +131,251 @@ usbcan_init(uint32_t dev, uint32_t bus, struct usbcan_bus_config *config)
     init_config.CAN_TXFP = 1;
     init_config.CAN_RELAY = 0;
 
-    status = VCI_InitCANEx(state.type, dev, bus, &init_config);
-    if(status == STATUS_ERR)
-    {
-	return USBCAN_ERROR;
+    uint32_t ginkgo_status = VCI_InitCANEx(state.type, dev, bus, &init_config);
+    if (ginkgo_status == STATUS_ERR) {
+        return false;
     }
 
-    if (config->num_filters == 0)
-    {
-	usbcan_clear_filters(dev, bus);
-    }
-    else
-    {
-	usbcan_set_filters(dev, bus, config->filters, config->num_filters);
+    if (config->num_filters == 0) {
+        usbcan_clear_filters(dev, bus);
+    } else {
+        usbcan_set_filters(dev, bus, config->filters, config->num_filters);
     }
 
-    if (config->cb != NULL)
-    {
-	status = usbcan_register_callback(dev, bus, config->cb, config->arg);
-	if (status == USBCAN_ERROR)
-	{
-	    return USBCAN_ERROR;
-	}
+    if (config->cb != NULL) {
+        status = usbcan_register_callback(dev, bus, config->cb, config->arg);
+        if (!status) {
+            return false;
+        }
     }
 
-    return USBCAN_OK;
+    return true;
 }
 
-uint32_t
-usbcan_start(uint32_t dev, uint32_t bus)
-{
-    int status = VCI_StartCAN(state.type, dev, bus);
-    if(status == STATUS_ERR)
-    {
-	return USBCAN_ERROR;
+bool usbcan_start(uint32_t dev, uint32_t bus) {
+    int ginkgo_status = VCI_StartCAN(state.type, dev, bus);
+    if (ginkgo_status == STATUS_ERR) {
+        return false;
     }
 
-    return USBCAN_OK;
+    return true;
 }
 
-uint32_t
-usbcan_reset(uint32_t dev, uint32_t bus)
-{
+bool usbcan_reset(uint32_t dev, uint32_t bus) {
     VCI_ResetCAN(state.type, dev, bus);
 
-    return USBCAN_OK;
+    return true;
 }
 
-uint32_t
-usbcan_stop(uint32_t dev, uint32_t bus)
-{
+bool usbcan_stop(uint32_t dev, uint32_t bus) {
     usbcan_deregister_callback(dev, bus);
     usbcan_reset(dev, bus);
 
-    return USBCAN_OK;
+    return true;
 }
 
-uint32_t
-usbcan_send(uint32_t dev, uint32_t bus, struct can_frame *frame)
-{
+uint32_t usbcan_send(uint32_t dev, uint32_t bus, struct can_frame *frame) {
     return usbcan_send_n(dev, bus, frame, 1);
 }
 
-uint32_t
-usbcan_send_n(uint32_t dev, uint32_t bus, struct can_frame *frames, uint32_t len)
-{
-    int sent = 0;
+uint32_t usbcan_send_n(uint32_t dev, uint32_t bus, struct can_frame *frames,
+                       uint32_t n) {
+    PVCI_CAN_OBJ msgs = (PVCI_CAN_OBJ)calloc(n, sizeof(PVCI_CAN_OBJ));
 
-    PVCI_CAN_OBJ msgs = (PVCI_CAN_OBJ)malloc(sizeof(VCI_CAN_OBJ) * len);
-    memset(msgs, 0, sizeof(VCI_CAN_OBJ) * len);
-    for (int i = 0; i < len; i++)
-    {
-	msgs[i].ID = (frames[i].can_id & CAN_EFF_FLAG) > 0
-	    ? frames[i].can_id & CAN_EFF_MASK
-	    : frames[i].can_id & CAN_SFF_MASK;
-	msgs[1].SendType = 0;
-	msgs[1].RemoteFlag = (frames[i].can_id & CAN_RTR_FLAG) > 0 ? 1 : 0;
-	msgs[1].ExternFlag = (frames[i].can_id & CAN_EFF_FLAG) > 0 ? 1 : 0;
+    for (uint32_t i = 0; i < n; i++) {
+        msgs[i].ID = (frames[i].can_id & CAN_EFF_FLAG) > 0
+            ? frames[i].can_id & CAN_EFF_MASK
+            : frames[i].can_id & CAN_SFF_MASK;
+        msgs[1].SendType = 0;
+        msgs[1].RemoteFlag = (frames[i].can_id & CAN_RTR_FLAG) > 0 ? 1 : 0;
+        msgs[1].ExternFlag = (frames[i].can_id & CAN_EFF_FLAG) > 0 ? 1 : 0;
 
-	for (int j = 0; j < frames[i].can_dlc; j++)
-	{
-	    msgs[i].Data[j] = frames[i].data[j];
-	}
-	msgs[i].DataLen = frames[i].can_dlc;
+        for (int j = 0; j < frames[i].can_dlc; j++) {
+            msgs[i].Data[j] = frames[i].data[j];
+        }
+        msgs[i].DataLen = frames[i].can_dlc;
     }
 
-    sent = VCI_Transmit(state.type, dev, bus, msgs, len);
+    int sent = VCI_Transmit(state.type, dev, bus, msgs, n);
 
     free(msgs);
 
     return sent;
 }
 
-uint32_t
-usbcan_set_filters(uint32_t dev, uint32_t bus, struct can_filter *filters, uint8_t num_filters)
-{
-    int status;
-
+bool usbcan_set_filters(uint32_t dev, uint32_t bus, struct can_filter *filters,
+                        uint8_t num_filters) {
     usbcan_clear_filters(dev, bus);
 
-    if (num_filters >= MAX_FILTERS)
-    {
-	return USBCAN_ERROR;
+    if (num_filters >= MAX_FILTERS) {
+        return false;
     }
 
-    for (int i = 0; i < num_filters; i++)
-    {
-	int mode = 1;
+    for (int i = 0; i < num_filters; i++) {
+        int mode = 1;
 
-	if (filters[i].can_mask == 0 && filters[i].can_id > 0)
-	{
-	    mode = 0;
-	}
+        if (filters[i].can_mask == 0 && filters[i].can_id > 0) {
+            mode = 0;
+        }
 
-	VCI_FILTER_CONFIG filter_config;
-	filter_config.FilterIndex = i;
-	filter_config.Enable = 1;
-	filter_config.ExtFrame = 0;
-	filter_config.FilterMode = mode;
-	filter_config.ID_IDE = (filters[i].can_id & CAN_EFF_FLAG) > 0 ? 1 : 0;
-	filter_config.ID_RTR = (filters[i].can_id & CAN_RTR_FLAG) > 0 ? 1 : 0;
-	filter_config.ID_Std_Ext = (filters[i].can_id & CAN_EFF_FLAG) > 0
-	    ? filters[i].can_id & CAN_EFF_MASK
-	    : filters[i].can_id & CAN_SFF_MASK;
-	filter_config.MASK_IDE = (filters[i].can_mask & CAN_EFF_FLAG) > 0 ? 1 : 0;
-	filter_config.MASK_RTR = (filters[i].can_mask & CAN_RTR_FLAG) > 0 ? 1 : 0;
-	filter_config.MASK_Std_Ext = (filters[i].can_mask & CAN_EFF_FLAG) > 0
-	    ? filters[i].can_mask & CAN_EFF_MASK
-	    : filters[i].can_mask & CAN_SFF_MASK;
+        VCI_FILTER_CONFIG filter_config;
+        filter_config.FilterIndex = i;
+        filter_config.Enable = 1;
+        filter_config.ExtFrame = 0;
+        filter_config.FilterMode = mode;
+        filter_config.ID_IDE = (filters[i].can_id & CAN_EFF_FLAG) > 0 ? 1 : 0;
+        filter_config.ID_RTR = (filters[i].can_id & CAN_RTR_FLAG) > 0 ? 1 : 0;
+        filter_config.ID_Std_Ext = (filters[i].can_id & CAN_EFF_FLAG) > 0
+            ? filters[i].can_id & CAN_EFF_MASK
+            : filters[i].can_id & CAN_SFF_MASK;
+        filter_config.MASK_IDE =
+            (filters[i].can_mask & CAN_EFF_FLAG) > 0 ? 1 : 0;
+        filter_config.MASK_RTR =
+            (filters[i].can_mask & CAN_RTR_FLAG) > 0 ? 1 : 0;
+        filter_config.MASK_Std_Ext = (filters[i].can_mask & CAN_EFF_FLAG) > 0
+            ? filters[i].can_mask & CAN_EFF_MASK
+            : filters[i].can_mask & CAN_SFF_MASK;
 
-	status = VCI_SetFilter(state.type, dev, bus, &filter_config);
-	if(status == STATUS_ERR)
-	{
-	    return USBCAN_ERROR;
-	}
+        int ginkgo_status = VCI_SetFilter(state.type, dev, bus, &filter_config);
+        if (ginkgo_status == STATUS_ERR) {
+            return false;
+        }
     }
 
-    return USBCAN_OK;
+    return true;
 }
 
-uint32_t
-usbcan_clear_filters(uint32_t dev, uint32_t bus)
-{
-    int status;
+bool usbcan_clear_filters(uint32_t dev, uint32_t bus) {
+    for (int i = 0; i < MAX_FILTERS; i++) {
+        VCI_FILTER_CONFIG filter_config;
+        filter_config.FilterIndex = i;
+        filter_config.Enable = 1;
+        filter_config.ExtFrame = 0;
+        filter_config.FilterMode = 0;
+        filter_config.ID_IDE = 0;
+        filter_config.ID_RTR = 0;
+        filter_config.ID_Std_Ext = 0;
+        filter_config.MASK_IDE = 0;
+        filter_config.MASK_RTR = 0;
+        filter_config.MASK_Std_Ext = 0;
 
-    for (int i = 0; i < MAX_FILTERS; i++)
-    {
-	VCI_FILTER_CONFIG filter_config;
-	filter_config.FilterIndex = i;
-	filter_config.Enable = 1;
-	filter_config.ExtFrame = 0;
-	filter_config.FilterMode = 0;
-	filter_config.ID_IDE = 0;
-	filter_config.ID_RTR = 0;
-	filter_config.ID_Std_Ext = 0;
-	filter_config.MASK_IDE = 0;
-	filter_config.MASK_RTR = 0;
-	filter_config.MASK_Std_Ext = 0;
-
-	status = VCI_SetFilter(state.type, dev, bus, &filter_config);
-	if(status == STATUS_ERR)
-	{
-	    return USBCAN_ERROR;
-	}
+        int ginkgo_status = VCI_SetFilter(state.type, dev, bus, &filter_config);
+        if (ginkgo_status == STATUS_ERR) {
+            return false;
+        }
     }
 
-    return USBCAN_OK;
+    return true;
 }
 
-struct usbcan_cb_entry*
-usbcan_get_callback(uint32_t dev, uint32_t bus)
-{
-    struct usbcan_cb_entry *cbe;
+struct usbcan_cb_entry *usbcan_get_callback(uint32_t dev, uint32_t bus) {
+    struct usbcan_cb_entry *cbe = state.callbacks;
 
-    cbe = state.callbacks;
-    while(cbe != NULL)
-    {
-	if (cbe->dev == dev && cbe->bus == bus)
-	{
-	    return cbe;
-	}
-	cbe = cbe->next;
+    while (cbe != NULL) {
+        if (cbe->dev == dev && cbe->bus == bus) {
+            return cbe;
+        }
+        cbe = cbe->next;
     }
 
     return NULL;
 }
 
-void
-usbcan_callback_dispatcher(uint32_t dev, uint32_t bus, uint32_t len)
-{
-    struct usbcan_cb_entry *cbe;
-    if ((cbe = usbcan_get_callback(dev, bus)) != NULL)
-    {
-	int msgs_avail = VCI_GetReceiveNum(state.type, dev, bus);
-	PVCI_CAN_OBJ vci_msgs = (PVCI_CAN_OBJ)malloc(sizeof(VCI_CAN_OBJ) * msgs_avail);
-	memset(vci_msgs, 0, sizeof(VCI_CAN_OBJ) * msgs_avail);
+void usbcan_callback_dispatcher(uint32_t dev, uint32_t bus, uint32_t n) {
+#pragma unused(n)
+    struct usbcan_cb_entry *cbe = usbcan_get_callback(dev, bus);
 
-	struct usbcan_msg *msgs = (struct usbcan_msg *)malloc(sizeof(struct usbcan_msg) * msgs_avail);
-	memset(msgs, 0, sizeof(struct usbcan_msg) * msgs_avail);
+    if (cbe != NULL) {
+        int msgs_avail = VCI_GetReceiveNum(state.type, dev, bus);
 
-	int msgs_read;
-	while (msgs_avail > 0)
-	{
-	    msgs_read = 0;
-	    msgs_read = VCI_Receive(state.type, dev, bus, vci_msgs, msgs_avail, -1);
-	    if(msgs_read == 0 || msgs_read == 0xFFFFFFFF)
-	    {
-		goto dispatcher_cleanup;
-	    }
+        PVCI_CAN_OBJ vci_msgs =
+            (PVCI_CAN_OBJ)calloc(msgs_avail, sizeof(VCI_CAN_OBJ));
+        struct usbcan_msg *msgs =
+            (struct usbcan_msg *)calloc(msgs_avail, sizeof(struct usbcan_msg));
 
-	    for (int i = 0; i < msgs_read; i++)
-	    {
-		msgs[i].frame.can_id = vci_msgs[i].ID;
+        uint32_t msgs_read;
+        while (msgs_avail > 0) {
+            msgs_read = 0;
+            msgs_read =
+                VCI_Receive(state.type, dev, bus, vci_msgs, msgs_avail, -1);
+            if (msgs_read == 0 || msgs_read == 0xFFFFFFFF) {
+                goto dispatcher_cleanup;
+            }
 
-		if (vci_msgs[i].TimeFlag > 0)
-		{
-		    msgs[i].timestamp = vci_msgs[i].TimeStamp;
-		}
+            for (uint32_t i = 0; i < msgs_read; i++) {
+                msgs[i].frame.can_id = vci_msgs[i].ID;
 
-		if (vci_msgs[i].RemoteFlag > 0)
-		{
-		    msgs[i].frame.can_id |= CAN_RTR_FLAG;
-		}
+                if (vci_msgs[i].TimeFlag > 0) {
+                    msgs[i].timestamp = vci_msgs[i].TimeStamp;
+                }
 
-		if (vci_msgs[i].ExternFlag > 0)
-		{
-		    msgs[i].frame.can_id |= CAN_EFF_FLAG;
-		}
+                if (vci_msgs[i].RemoteFlag > 0) {
+                    msgs[i].frame.can_id |= CAN_RTR_FLAG;
+                }
 
-		msgs[i].frame.can_dlc = vci_msgs[i].DataLen;
-		for (int j = 0; j < vci_msgs[i].DataLen; j++)
-		{
-		    msgs[i].frame.data[j] = vci_msgs[i].Data[j];
-		}
-	    }
-	    cbe->cb(dev, bus, msgs, msgs_read, cbe->arg);
+                if (vci_msgs[i].ExternFlag > 0) {
+                    msgs[i].frame.can_id |= CAN_EFF_FLAG;
+                }
 
-	    msgs_avail -= msgs_read;
-	}
-    dispatcher_cleanup:
-	free(msgs);
-	free(vci_msgs);
+                msgs[i].frame.can_dlc = vci_msgs[i].DataLen;
+                for (int j = 0; j < vci_msgs[i].DataLen; j++) {
+                    msgs[i].frame.data[j] = vci_msgs[i].Data[j];
+                }
+            }
+            cbe->cb(dev, bus, msgs, msgs_read, cbe->arg);
+
+            msgs_avail -= msgs_read;
+        }
+      dispatcher_cleanup:
+        free(msgs);
+        free(vci_msgs);
     }
 }
 
+bool usbcan_register_callback(uint32_t dev, uint32_t bus, usbcan_cb cb,
+                              void *arg) {
+    struct usbcan_cb_entry *cbe = usbcan_get_callback(dev, bus);
 
-uint32_t
-usbcan_register_callback(uint32_t dev, uint32_t bus, usbcan_cb cb, void *arg)
-{
-    struct usbcan_cb_entry *cbe;
-    if ((cbe = usbcan_get_callback(dev, bus)) != NULL)
-    {
-	return USBCAN_ERROR;
+    if (cbe != NULL) {
+        return false;
     }
 
-    cbe = (struct usbcan_cb_entry *)malloc(sizeof(struct usbcan_cb_entry));
+    cbe = (struct usbcan_cb_entry *)calloc(1, sizeof(struct usbcan_cb_entry));
     cbe->dev = dev;
     cbe->bus = bus;
     cbe->cb = cb;
     cbe->arg = arg;
     cbe->next = NULL;
 
-    if (state.tail != NULL)
-    {
-	state.tail->next = cbe;
-    }
-    else
-    {
-	state.callbacks = cbe;
+    if (state.tail != NULL) {
+        state.tail->next = cbe;
+    } else {
+        state.callbacks = cbe;
     }
     state.tail = cbe;
 
-    return USBCAN_OK;
+    return true;
 }
 
-uint32_t
-usbcan_deregister_callback(uint32_t dev, uint32_t bus)
-{
-    struct usbcan_cb_entry *cbe, *pred_cbe = state.callbacks;
-    if ((cbe = usbcan_get_callback(dev, bus)) != NULL)
-    {
-	if (pred_cbe != cbe)
-	{
-	    while (pred_cbe->next != cbe)
-	    {
-		pred_cbe = pred_cbe->next;
-	    }
-	}
+bool usbcan_deregister_callback(uint32_t dev, uint32_t bus) {
+    struct usbcan_cb_entry *cbe = usbcan_get_callback(dev, bus);
+    struct usbcan_cb_entry *pred_cbe = state.callbacks;
 
-	pred_cbe->next = cbe->next;
+    if (cbe != NULL) {
+        if (pred_cbe != cbe) {
+            while (pred_cbe->next != cbe) {
+                pred_cbe = pred_cbe->next;
+            }
+        }
 
-	if (state.tail == cbe)
-	{
-	    state.tail = pred_cbe;
-	}
+        pred_cbe->next = cbe->next;
 
-	free(cbe);
+        if (state.tail == cbe) {
+            state.tail = pred_cbe;
+        }
 
-	return USBCAN_OK;
+        free(cbe);
     }
 
-    return USBCAN_ERROR;
+    return true;
 }
