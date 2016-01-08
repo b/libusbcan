@@ -82,10 +82,10 @@ libusbcan does some internal bookkeeping that must be performed explicitly befor
 	{
 		for (int i = 0; i < len; i++)
 		{
-			printf(" usbcan%i:%i  %X   [%i] ", dev, bus, msgs[i]->frame.can_id, msgs[i]->frame.can_dlc);
-			for(int j = 0; j < CAN_MAX_DLEN; j++)
+			printf(" usbcan%i:%i  %X   [%i] ", dev, bus, msgs[i].frame.can_id, msgs[i].frame.can_dlc);
+			for(int j = 0; j < 8; j++)
 			{
-				printf(" %02X", msgs[i]->frame.data[j]);
+				printf(" %02X", msgs[i].frame.data[j]);
 			}
 			printf("\n");
 		}
