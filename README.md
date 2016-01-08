@@ -15,15 +15,14 @@ This will build the library and the usbcandump example utility.
 
 libusbcan does some internal bookkeeping that must be performed explicitly before and after it is used.
 
-	uint32_t usbcan_library_init();
-	uint32_t usbcan_library_close();
+	bool usbcan_library_init();
+	bool usbcan_library_close();
 
 # Application lifecycle
 
-	uint32_t usbcan_init(uint32_t dev, uint32_t bus, struct usbcan_bus_config *config);
+	bool usbcan_init(uint32_t dev, uint32_t bus, struct usbcan_bus_config *config);
 
-	struct usbcan_bus_config
-	{
+	struct usbcan_bus_config {
 		uint32_t           speed;
 		struct can_filter *filters;
 		uint8_t            num_filters;
@@ -41,22 +40,21 @@ libusbcan does some internal bookkeeping that must be performed explicitly befor
 	CAN_SPEED_20KBPS
 	CAN_SPEED_10KBPS
 	
-	uint32_t usbcan_start(uint32_t dev, uint32_t bus);
-	uint32_t usbcan_reset(uint32_t dev, uint32_t bus);
-	uint32_t usbcan_stop(uint32_t dev, uint32_t bus);
+	bool usbcan_start(uint32_t dev, uint32_t bus);
+	bool usbcan_reset(uint32_t dev, uint32_t bus);
+	bool usbcan_stop(uint32_t dev, uint32_t bus);
 
 # Sending and receiving messages
 
-	struct usbcan_msg
-	{
+	struct usbcan_msg {
 		uint32_t timestamp;
 		struct can_frame frame;
 	};
 
-	void(*usbcan_cb)(uint32_t dev, uint32_t bus, struct usbcan_msg *msgs, uint32_t len, void *arg);
+	void(*usbcan_cb)(uint32_t dev, uint32_t bus, struct usbcan_msg *msgs, uint32_t n, void *arg);
 
 	uint32_t usbcan_send(uint32_t dev, uint32_t bus, struct can_frame *frame);
-	uint32_t usbcan_send_n(uint32_t dev, uint32_t bus, struct can_frame *frames, uint32_t len);
+	uint32_t usbcan_send_n(uint32_t dev, uint32_t bus, struct can_frame *frames, uint32_t n);
 
 # Example
 
@@ -69,19 +67,14 @@ libusbcan does some internal bookkeeping that must be performed explicitly befor
 	
     #include "usbcan.h"
 	
-	void
-	usbcandump_exit_handler(int signal)
-	{
+	void usbcandump_exit_handler(int signal) {
 		usbcan_library_close();
 
 	    exit(0);
 	}
 	
-	void
-	usbcandump_callback(uint32_t dev, uint32_t bus, struct usbcan_msg *msgs, uint32_t len, void *arg)
-	{
-		for (int i = 0; i < len; i++)
-		{
+	void usbcandump_callback(uint32_t dev, uint32_t bus, struct usbcan_msg *msgs, uint32_t n, void *arg) {
+		for (int i = 0; i < len; i++) {
 			printf(" usbcan%i:%i  %X   [%i] ", dev, bus, msgs[i].frame.can_id, msgs[i].frame.can_dlc);
 			for(int j = 0; j < 8; j++)
 			{
@@ -91,13 +84,10 @@ libusbcan does some internal bookkeeping that must be performed explicitly befor
 		}
 	}
 
-	int main(void)
-	{
+	int main(void) {
 		setbuf(stdout, NULL);
 	
-		int status = usbcan_library_init();
-		if (status == USBCAN_ERROR)
-		{
+		if (usbcan_library_init()) {
 			exit(-1);
 		}
 		
@@ -108,15 +98,11 @@ libusbcan does some internal bookkeeping that must be performed explicitly befor
 		config.cb = usbcandump_callback;
 		config.arg = NULL;
 		
-		status = usbcan_init(0, CAN1, &config);
-		if (status == USBCAN_ERROR)
-		{
+		if (usbcan_init(0, CAN1, &config)) {
 			exit(-1);
 		}
 		
-		status = usbcan_start(0, CAN1);
-		if (status == USBCAN_ERROR)
-		{
+		if (usbcan_start(0, CAN1)) {
 			exit(-1);
 		}
 		
