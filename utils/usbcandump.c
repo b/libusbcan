@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <signal.h>
 
+#include "getopt.h"
 #include "usbcan.h"
 
 uint32_t count = 0;
@@ -31,11 +32,32 @@ void usbcandump_callback(uint32_t dev, uint32_t bus, struct usbcan_msg *msgs,
     }
 }
 
-int main(void) {
+void usage() {
+    exit(-1);
+}
+
+int main(int argc, char **argv) {
+    uint32_t dev = 0, bus = 0;
+
+    struct sigaction int_act;
+    int_act.sa_handler = usbcandump_exit_handler;
+    sigaction(SIGINT, &int_act, NULL);
+    
     setbuf(stdout, NULL);
 
-    int status = usbcan_library_init();
-    if (status == USBCAN_ERROR) {
+    const char *ch;
+    while ((ch = GETOPT(argc, argv)) != NULL) {
+        GETOPT_SWITCH(ch) {
+          GETOPT_OPTARG("--dev") : dev = atoi(optarg);
+            break;
+          GETOPT_OPTARG("--bus") : bus = atoi(optarg);
+            break;
+          GETOPT_DEFAULT:
+            usage();
+        }
+    }
+
+    if (!usbcan_library_init()) {
         exit(-1);
     }
 
@@ -46,19 +68,13 @@ int main(void) {
     config.cb = usbcandump_callback;
     config.arg = NULL;
 
-    status = usbcan_init(0, CAN1, &config);
-    if (status == USBCAN_ERROR) {
+    if (!usbcan_init(dev, bus, &config)) {
         exit(-1);
     }
 
-    status = usbcan_start(0, CAN1);
-    if (status == USBCAN_ERROR) {
+    if (!usbcan_start(dev, bus)) {
         exit(-1);
     }
-
-    struct sigaction int_act;
-    int_act.sa_handler = usbcandump_exit_handler;
-    sigaction(SIGINT, &int_act, NULL);
 
     pause();
 

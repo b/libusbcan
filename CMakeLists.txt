@@ -55,6 +55,10 @@ add_library( usbcan SHARED ${LIB_SOURCES} )
 target_link_libraries( usbcan ${PROJECT_LINK_LIBS} )
 
 set( UTIL_LINK_LIBS ${PROJECT_LINK_LIBS} usbcan )
-set( DUMP_SOURCES utils/usbcandump.c )
+set( DUMP_SOURCES utils/getopt.c utils/usbcandump.c )
 add_executable( usbcandump ${DUMP_SOURCES} )
 target_link_libraries( usbcandump ${UTIL_LINK_LIBS} )
+
+set( FLOOD_SOURCES utils/getopt.c utils/usbcanflood.c )
+add_executable( usbcanflood ${FLOOD_SOURCES} )
+target_link_libraries( usbcanflood ${UTIL_LINK_LIBS} )

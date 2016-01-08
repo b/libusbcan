@@ -85,9 +85,13 @@ libusbcan does some internal bookkeeping that must be performed explicitly befor
 	}
 
 	int main(void) {
-		setbuf(stdout, NULL);
+		struct sigaction int_act;
+		int_act.sa_handler = usbcandump_exit_handler;
+		sigaction(SIGINT, &int_act, NULL);
+
+	    setbuf(stdout, NULL);
 	
-		if (usbcan_library_init()) {
+		if (!usbcan_library_init()) {
 			exit(-1);
 		}
 		
@@ -98,17 +102,13 @@ libusbcan does some internal bookkeeping that must be performed explicitly befor
 		config.cb = usbcandump_callback;
 		config.arg = NULL;
 		
-		if (usbcan_init(0, CAN1, &config)) {
+		if (!usbcan_init(0, CAN1, &config)) {
 			exit(-1);
 		}
 		
-		if (usbcan_start(0, CAN1)) {
+		if (!usbcan_start(0, CAN1)) {
 			exit(-1);
 		}
-		
-		struct sigaction int_act;
-		int_act.sa_handler = usbcandump_exit_handler;
-		sigaction(SIGINT, &int_act, NULL);
 		
 		pause();
 		
