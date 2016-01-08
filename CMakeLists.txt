@@ -4,6 +4,8 @@ set( CMAKE_BUILD_TYPE Release )
 set( CMAKE_SKIP_BUILD_RPATH true )
 set( CMAKE_C_STANDARD 99 )
 
+set( PROJECT_LINK_LIBS ${PROJECT_LINK_LIBS} Ginkgo_Driver pthread )
+
 # Architecture detection courtesy of BoringSSL
 if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
     set(ARCH "x86_64")
@@ -46,7 +48,6 @@ endif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 message(STATUS "Building for ${CMAKE_SYSTEM_NAME}/${ARCH}")
 
 include_directories(include)
-set( PROJECT_LINK_LIBS ${PROJECT_LINK_LIBS} Ginkgo_Driver )
 set( LIB_SOURCES src/usbcan.c )
 
 add_library( usbcan SHARED ${LIB_SOURCES} )
