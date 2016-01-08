@@ -3,6 +3,7 @@ project( usbcan )
 set( CMAKE_BUILD_TYPE Release )
 set( CMAKE_SKIP_BUILD_RPATH true )
 set( CMAKE_C_STANDARD 99 )
+set( CMAKE_C_FLAGS "-Wall -Wextra -Wpedantic")
 
 set( PROJECT_LINK_LIBS ${PROJECT_LINK_LIBS} Ginkgo_Driver pthread )
 
@@ -31,7 +32,7 @@ else()
 endif()
 
 if( ${CMAKE_SYSTEM_NAME} MATCHES "Darwin" )
-    set( CMAKE_C_FLAGS ${CMAKE_C_FLAGS} "-DOS_UNIX" )
+    set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DOS_UNIX" )
     link_directories( lib/macos ./ )
 elseif( ${CMAKE_SYSTEM_NAME} MATCHES "Linux" )
     set( CMAKE_C_FLAGS ${CMAKE_C_FLAGS} "-DOS_UNIX -D_POSIX_C_SOURCES=200809L" )
