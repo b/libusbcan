@@ -7,8 +7,6 @@
 
 #include "usbcan.h"
 
-#define GINKGO_TYPE VCI_USBCAN2
-
 uint32_t count = 0;
 
 void
@@ -23,28 +21,28 @@ void
 usbcandump_callback(uint32_t dev, uint32_t bus, struct usbcan_msg *msgs, uint32_t n, void *arg)
 {
     for(int i = 0; i < n; i++)
+    {
+	count++;
+	printf(" usbcan%i:%i  %3X   [%i] ", dev, bus, msgs[i].frame.can_id, msgs[i].frame.can_dlc);
+	for(int j = 0; j < 8; j++)
 	{
-	    count++;
-	    printf(" usbcan%i:%i  %3X   [%i] ", dev, bus, msgs[i].frame.can_id, msgs[i].frame.can_dlc);
-	    for(int j = 0; j < 8; j++)
-		{
-		    printf(" %02X", msgs[i].frame.data[j]);
-		}
-	    printf(" %i\n", count);
+	    printf(" %02X", msgs[i].frame.data[j]);
 	}
+	printf(" %i\n", count);
+    }
 }
 
 int
 main(void)
 {
     setbuf(stdout, NULL);
-
+    
     int status = usbcan_library_init();
     if (status == USBCAN_ERROR)
-	{
-	    exit(-1);
-	}
-
+    {
+	exit(-1);
+    }
+    
     struct usbcan_bus_config config;
     config.speed = CAN_SPEED_500KBPS;
     config.filters = NULL;
@@ -54,15 +52,15 @@ main(void)
     
     status = usbcan_init(0, CAN1, &config);
     if (status == USBCAN_ERROR)
-	{
-	    exit(-1);
-	}
-
+    {
+	exit(-1);
+    }
+    
     status = usbcan_start(0, CAN1);
     if (status == USBCAN_ERROR)
-	{
-	    exit(-1);
-	}
+    {
+	exit(-1);
+    }
     
     struct sigaction int_act;
     int_act.sa_handler = usbcandump_exit_handler;
