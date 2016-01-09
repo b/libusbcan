@@ -6,10 +6,12 @@ ViewTool only distributes binaries for their USB-CAN/Ginkgo libraries, so platfo
 provide: OS X, Linux x86, Linux x86_64, and Raspberry Pi. Building libusbcan requires [CMake](http://cmake.org) 3.0.1
 or later. Once you have CMake installed, just
 
-	cmake .
+	mkdir build
+	cd build
+	cmake ../
 	make
 
-This will build the library and the usbcandump example utility.
+This will build the library and the example utilities.
 
 # Library lifecycle
 
