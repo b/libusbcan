@@ -1,5 +1,9 @@
 cmake_minimum_required( VERSION 3.0.1 )
 project( usbcan )
+
+set( EXECUTABLE_OUTPUT_PATH bin )
+set( LIBRARY_OUTPUT_PATH lib )
+
 set( CMAKE_BUILD_TYPE Release )
 set( CMAKE_SKIP_BUILD_RPATH true )
 set( CMAKE_C_STANDARD 99 )
