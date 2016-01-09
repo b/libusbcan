@@ -180,7 +180,7 @@ uint32_t usbcan_send(uint32_t dev, uint32_t bus, struct can_frame *frame) {
 
 uint32_t usbcan_send_n(uint32_t dev, uint32_t bus, struct can_frame *frames,
                        uint32_t n) {
-    PVCI_CAN_OBJ msgs = (PVCI_CAN_OBJ)calloc(n, sizeof(PVCI_CAN_OBJ));
+    PVCI_CAN_OBJ msgs = (PVCI_CAN_OBJ)calloc(n, sizeof(VCI_CAN_OBJ));
 
     for (uint32_t i = 0; i < n; i++) {
         msgs[i].ID = (frames[i].can_id & CAN_EFF_FLAG) > 0
@@ -298,7 +298,7 @@ void usbcan_callback_dispatcher(uint32_t dev, uint32_t bus, uint32_t n) {
             msgs_read = 0;
             msgs_read =
                 VCI_Receive(state.type, dev, bus, vci_msgs, msgs_avail, -1);
-            if (msgs_read == 0 || msgs_read == 0xFFFFFFFF) {
+            if (msgs_read == 0 || msgs_read >= 0xFFFFFFFF) {
                 goto dispatcher_cleanup;
             }
 
