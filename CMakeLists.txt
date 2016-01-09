@@ -66,3 +66,7 @@ target_link_libraries( usbcandump ${UTIL_LINK_LIBS} )
 set( FLOOD_SOURCES utils/getopt.c utils/usbcanflood.c )
 add_executable( usbcanflood ${FLOOD_SOURCES} )
 target_link_libraries( usbcanflood ${UTIL_LINK_LIBS} )
+
+install(TARGETS usbcandump usbcanflood usbcan
+        RUNTIME DESTINATION bin
+        LIBRARY DESTINATION lib)
