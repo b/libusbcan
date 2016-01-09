@@ -10,13 +10,11 @@
 #include "getopt.h"
 #include "usbcan.h"
 
-#define BATCH_SIZE 20
-#define DELAY_NS 10000
-
 int32_t s_count = 0, r_count = 0, errors = 0, batches = 0, r_batches = 0;
 
 void usbcandump_exit_handler(int signal) {
 #pragma unused(signal)
+
     usbcan_library_close();
 
     exit(0);
@@ -28,7 +26,7 @@ void usbcandump_callback(uint32_t dev, uint32_t bus, struct usbcan_msg *msgs,
 #pragma unused(bus)
 #pragma unused(msgs)
 #pragma unused(arg)
-    
+
     r_batches++;
     r_count += n;
 }
@@ -37,10 +35,9 @@ void usbcandump_null_callback(uint32_t dev, uint32_t bus,
                               struct usbcan_msg *msgs, uint32_t n, void *arg) {
 #pragma unused(msgs)
 #pragma unused(arg)
-    
-    printf("Received unexpected callback with %i messages, resetting %i/%i\n",
-           n, dev, bus);
-    usbcan_reset(dev, bus);
+
+    printf("Received unexpected callback with %u messages %u/%u\n", n, dev,
+           bus);
 }
 
 void usage() {
@@ -51,7 +48,8 @@ void usage() {
 int main(int argc, char **argv) {
     uint32_t dev_src = 0, bus_src = 0;
     uint32_t dev_dst = 0, bus_dst = 1;
-    
+    uint32_t delay = 1, batch_size = 200;
+
     setbuf(stdout, NULL);
 
     struct sigaction int_act;
@@ -69,11 +67,15 @@ int main(int argc, char **argv) {
             break;
           GETOPT_OPTARG("--bus-dst") : bus_dst = atoi(optarg);
             break;
+          GETOPT_OPTARG("--delay_ms") : delay = atoi(optarg);
+            break;
+          GETOPT_OPTARG("--batch_size") : batch_size = atoi(optarg);
+            break;
           GETOPT_DEFAULT:
             usage();
         }
     }
-    
+
     if (!usbcan_library_init()) {
         exit(-1);
     }
@@ -82,7 +84,7 @@ int main(int argc, char **argv) {
     config.speed = GINKGO_CAN_SPEED_500KBPS; // CAN_SPEED_500KBPS;
     config.filters = NULL;
     config.num_filters = 0;
-    config.cb = usbcandump_callback;
+    config.cb = usbcandump_null_callback;
     config.arg = NULL;
 
     if (!usbcan_init(dev_src, bus_src, &config)) {
@@ -95,7 +97,7 @@ int main(int argc, char **argv) {
 
     sleep(1);
 
-    config.cb = usbcandump_null_callback;
+    config.cb = usbcandump_callback;
     if (!usbcan_init(dev_dst, bus_dst, &config)) {
         exit(-1);
     }
@@ -104,13 +106,14 @@ int main(int argc, char **argv) {
         exit(-1);
     }
 
-    printf("Initialization complete: %u/%u -> %u/%u\n", dev_src, bus_src, dev_dst, bus_dst);
+    printf("Initialization complete: %u/%u -> %u/%u\n", dev_src, bus_src,
+           dev_dst, bus_dst);
 
     sleep(1);
 
     struct timespec ts;
     ts.tv_sec = 0;
-    ts.tv_nsec = DELAY_NS * BATCH_SIZE;
+    ts.tv_nsec = delay + 1000000;
 
     struct timeval tv;
     time_t last = 0;
@@ -120,8 +123,8 @@ int main(int argc, char **argv) {
     }
 
     struct can_frame *frames =
-        (struct can_frame *)calloc(BATCH_SIZE, sizeof(struct can_frame));
-    for (int f = 0; f < BATCH_SIZE; f++) {
+        (struct can_frame *)calloc(batch_size, sizeof(struct can_frame));
+    for (uint32_t f = 0; f < batch_size; f++) {
         frames[f].can_id = 0x7FD;
         frames[f].data[0] = 0x01;
         frames[f].data[1] = 0x02;
@@ -135,11 +138,8 @@ int main(int argc, char **argv) {
     }
 
     while (1) {
-        int sent = usbcan_send_n(dev_src, bus_src, frames, BATCH_SIZE);
-        if (sent == 0) {
-            usbcan_reset(dev_src, bus_src);
-        }
-        errors += BATCH_SIZE - sent;
+        int sent = usbcan_send_n(dev_src, bus_src, frames, batch_size);
+        errors += batch_size - sent;
         s_count += sent;
         batches++;
 
