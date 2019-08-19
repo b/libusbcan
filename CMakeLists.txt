@@ -1,4 +1,4 @@
-cmake_minimum_required( VERSION 3.0.1 )
+cmake_minimum_required( VERSION 2.8 )
 project( usbcan )
 
 set( EXECUTABLE_OUTPUT_PATH bin )
@@ -7,9 +7,7 @@ set( LIBRARY_OUTPUT_PATH lib )
 set( CMAKE_BUILD_TYPE Release )
 set( CMAKE_SKIP_BUILD_RPATH true )
 set( CMAKE_C_STANDARD 99 )
-set( CMAKE_C_FLAGS "-Wall -Wextra -pedantic")
-
-set( PROJECT_LINK_LIBS ${PROJECT_LINK_LIBS} Ginkgo_Driver pthread )
+set( CMAKE_C_FLAGS "-std=c99 -Wall -Wextra")
 
 # Architecture detection courtesy of BoringSSL
 if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
@@ -37,18 +35,20 @@ endif()
 
 if( ${CMAKE_SYSTEM_NAME} MATCHES "Darwin" )
     set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DOS_UNIX" )
-    link_directories( lib/macos ./ )
+    find_library(GINKGO_LIB Ginkgo_Driver PATHS lib/macos)
 elseif( ${CMAKE_SYSTEM_NAME} MATCHES "Linux" )
-    set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DOS_UNIX -D_POSIX_C_SOURCES=200809L" )
+    set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DOS_UNIX -D_POSIX_C_SOURCES=200809L -D_POSIX_C_SOURCE=200809L" )
     set( PROJECT_LINK_LIBS ${PROJECT_LINK_LIBS} usb )
     if( ${ARCH} STREQUAL "arm" )
-	link_directories( /lib/arm-linux-gnueabihf lib/rpi ./ )
+        find_library(GINKGO_LIB Ginkgo_Driver PATHS lib/rpi)
     elseif( ${ARCH} STREQUAL "x86_64" )
-        link_directories( lib/linux_64bit ./ )
+        find_library(GINKGO_LIB Ginkgo_Driver PATHS lib/linux_64bit)
     else()
-	link_directories( lib/linux_32bit ./ )
+        find_library(GINKGO_LIB Ginkgo_Driver PATHS lib/linux_32bit)
     endif(${ARCH} STREQUAL "arm" )
 endif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+
+set( PROJECT_LINK_LIBS ${PROJECT_LINK_LIBS} ${GINKGO_LIB} pthread )
 
 message(STATUS "Building for ${CMAKE_SYSTEM_NAME}/${ARCH}")
 
@@ -70,3 +70,9 @@ target_link_libraries( usbcanflood ${UTIL_LINK_LIBS} )
 install(TARGETS usbcandump usbcanflood usbcan
         RUNTIME DESTINATION bin
         LIBRARY DESTINATION lib)
+
+install(FILES ${GINKGO_LIB}
+        DESTINATION lib)
+
+install(FILES include/can_compat.h include/ginkgo.h include/usbcan.h
+        DESTINATION include)
