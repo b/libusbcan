@@ -54,6 +54,8 @@ int main(int argc, char **argv) {
 
     struct sigaction int_act;
     int_act.sa_handler = usbcandump_exit_handler;
+    sigemptyset (&int_act.sa_mask);
+    int_act.sa_flags = 0;
     sigaction(SIGINT, &int_act, NULL);
 
     const char *ch;
