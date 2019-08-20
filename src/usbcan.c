@@ -186,9 +186,9 @@ uint32_t usbcan_send_n(uint32_t dev, uint32_t bus, struct can_frame *frames,
         msgs[i].ID = (frames[i].can_id & CAN_EFF_FLAG) > 0
             ? frames[i].can_id & CAN_EFF_MASK
             : frames[i].can_id & CAN_SFF_MASK;
-        msgs[1].SendType = 0;
-        msgs[1].RemoteFlag = (frames[i].can_id & CAN_RTR_FLAG) > 0 ? 1 : 0;
-        msgs[1].ExternFlag = (frames[i].can_id & CAN_EFF_FLAG) > 0 ? 1 : 0;
+        msgs[i].SendType = 0;
+        msgs[i].RemoteFlag = (frames[i].can_id & CAN_RTR_FLAG) > 0 ? 1 : 0;
+        msgs[i].ExternFlag = (frames[i].can_id & CAN_EFF_FLAG) > 0 ? 1 : 0;
 
         for (int j = 0; j < frames[i].can_dlc; j++) {
             msgs[i].Data[j] = frames[i].data[j];
@@ -363,19 +363,26 @@ bool usbcan_deregister_callback(uint32_t dev, uint32_t bus) {
 
     if (cbe != NULL) {
         if (pred_cbe != cbe) {
+            /* Update prior entries next pointer to new next */
             while (pred_cbe->next != cbe) {
                 pred_cbe = pred_cbe->next;
             }
+            pred_cbe->next = cbe->next;
+        }
+        else {
+            /* Otherwise if first entry then update this to next or null */
+            state.callbacks = cbe->next;
         }
 
-        pred_cbe->next = cbe->next;
-
+        /* If last entry then update the tail pointer */
         if (state.tail == cbe) {
             state.tail = pred_cbe;
         }
 
         free(cbe);
+        return true;
     }
-
-    return true;
+    else {
+        return false;
+    }
 }
