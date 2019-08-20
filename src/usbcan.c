@@ -363,19 +363,26 @@ bool usbcan_deregister_callback(uint32_t dev, uint32_t bus) {
 
     if (cbe != NULL) {
         if (pred_cbe != cbe) {
+            /* Update prior entries next pointer to new next */
             while (pred_cbe->next != cbe) {
                 pred_cbe = pred_cbe->next;
             }
+            pred_cbe->next = cbe->next;
+        }
+        else {
+            /* Otherwise if first entry then update this to next or null */
+            state.callbacks = cbe->next;
         }
 
-        pred_cbe->next = cbe->next;
-
+        /* If last entry then update the tail pointer */
         if (state.tail == cbe) {
             state.tail = pred_cbe;
         }
 
         free(cbe);
+        return true;
     }
-
-    return true;
+    else {
+        return false;
+    }
 }
